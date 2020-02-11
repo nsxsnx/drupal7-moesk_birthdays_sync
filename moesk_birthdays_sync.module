@@ -1,0 +1,48 @@
+<?php
+/**
+ * @file
+ * A module that copies birthdays from text field to corresponding field of birthdays module
+ */
+
+
+/**
+ * Implements cron job.
+ */
+function moesk_birthdays_sync_cron() {
+	$VERBOSE = False;
+	$DATE_FORMAT = 'd.m.Y';
+	drupal_set_message( 'Moesk_birthdays_sync: module started', 'status');
+	$uids = db_query('SELECT uid FROM {users} WHERE uid > 1 and status = 1')->fetchCol();
+	$users = user_load_multiple($uids);
+	$user_cnt = 0;
+	#$users = array_slice($users, 0, 5);
+	foreach ($users as $user) {
+		if (empty($user->field_birthday_txt['und'][0]['value'])) continue;
+		$bd_txt = $user->field_birthday_txt['und'][0]['value'];
+		$uid = $user->uid;
+		if ($VERBOSE) {
+			$str = 'Moesk_birthdays_sync: ' . $uid . ': ' . $bd_txt;
+			drupal_set_message($str, 'status');
+		}
+		try { $bd = BirthdaysBirthday::fromString($bd_txt, False, $DATE_FORMAT); } 
+		catch (Exception $e) {
+			drupal_set_message( 'Moesk_birthdays_sync: date parsing failed! UID: ' . $uid . ', Exception: ' . $e->getMessage(), 'error');
+			continue;
+		}
+		$user->birthdays['und']['0']['day'] = $bd->getDay();
+		$user->birthdays['und']['0']['month'] = $bd->getMonth();
+		$user->birthdays['und']['0']['year'] = $bd->getYear();
+		$user->birthdays['und']['0']['triggers'] = 1;
+		$save_res = NULL;
+		try {
+			$save_res = user_save($user);
+		}
+		catch (Exception $e) {
+			drupal_set_message( 'Moesk_birthdays_sync: UID: ' . $uid . '. Save user exception: ' . $e->getMessage(), 'error');
+			continue;
+		}
+		if ( $save_res ) $user_cnt++;
+		else drupal_set_message( 'Moesk_birthdays_sync: user save failed! UID: ' . $uid, 'error');
+	}
+	drupal_set_message( 'Moesk_birthdays_sync: ' . $user_cnt . ' users synchronized successfully', 'status');
+}

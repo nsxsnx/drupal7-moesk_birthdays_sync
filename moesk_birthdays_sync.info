@@ -1,0 +1,7 @@
+name = Moesk birthdays syncronization
+description = Module that syncronize users' birthdays from birthday_txt (field_birthday_txt) user field to Birth date (field_birth_date) field of a birthdays module.
+dependencies[] = birthdays
+core = 7.x
+package = Moesk
+configure = admin/config/people/Moesk_birthdays_sync
+
